@@ -335,3 +335,116 @@ echo $resultQuery;
 
 - `one_time_keyboard` — скрыть клавиатуру, как только она была использована. Клавиатура по-прежнему будет доступна, но клиенты будут автоматически отображать обычную, буквенную клавиатуру в чате — пользователь может нажать специальную кнопку в поле ввода, чтобы снова увидеть пользовательскую клавиатуру. Значение по умолчанию равно false.
 - `resize_keyboard` — изменяет размер клавиатуры по вертикали для оптимальной подгонки (например, уменьшить клавиатуру, если есть только два ряда кнопок). По умолчанию установлено значение false, и в этом случае пользовательская клавиатура всегда имеет ту же высоту, что и стандартная клавиатура приложения.
+
+---
+
+## Отправка изображений в Telegram чат
+
+Пример отправки изображения выглядит так: используем метод `sendPhoto`
+
+``` 
+$arrayQuery = array(
+    'chat_id' => TG_USER_ID,
+    'caption' => 'Проверка работы',
+    'photo' => curl_file_create(__DIR__ . '/1.jpg', 'image/jpg' , '1.jpg')
+);
+$ch = curl_init('https://api.telegram.org/bot'. TG_TOKEN .'/sendPhoto');
+curl_setopt($ch, CURLOPT_POST, 1); // данный параметр говорит, что мы отправлем POST запрос, 
+curl_setopt($ch, CURLOPT_POSTFIELDS, $arrayQuery); // в данный параметр передаем массив с пост данными
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+$res = curl_exec($ch); //записываем ответ от telegram 
+curl_close($ch);
+```
+
+Здесь собираем в массив `$arrayQuery` параметры для отправки запросов. Для отправки изображения, нам необходимо передать `id` чата, текст сообщения (для изображений он передается в параметре `caption`), и новый параметр `photo` в который мы передаём сформированный, с помощью функции `curl_file_create()`, объект изображения.
+
+Ниже указываем что все данные должны передаваться методом POST и не забываем передавать токен в URL запроса.
+
+Таким образом отправляем сжатое изображение в чат с указанной подписью.
+
+Дополнительные параметры, которые предлагает нам документация Telegram.
+- `protect_content` — данный параметр запрещает сохранение и пересылку изображения.
+- `reply_markup` — позволяет добавить кнопки под изображение
+
+---
+
+## Отправка файлов в Telegram чат
+
+Пример отправки файла выглядит так: используем метод `sendDocument`
+
+``` 
+$arrayQuery = array(
+    'chat_id' => TG_USER_ID,
+    'caption' => 'Проверка работы',
+    'document' => curl_file_create(__DIR__ . '/1.jpg', 'image/jpg' , '1.jpg')
+);
+$ch = curl_init('https://api.telegram.org/bot'. TG_TOKEN .'/sendDocument');
+curl_setopt($ch, CURLOPT_POST, 1); // данный параметр говорит, что мы отправлем POST запрос,
+curl_setopt($ch, CURLOPT_POSTFIELDS, $arrayQuery); // в данный параметр передаем массив с пост данными
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+$res = curl_exec($ch); //записываем ответ от telegram
+curl_close($ch);
+```
+
+Каждый отправленный файл в чат, сохраняется на серверах Телеграм. И для того чтобы получить доступ к ранее отправленному файлу и не нагружать бота запросами, вы можете просто передать `hash` строку переданную в параметре `document -> file_id` и таким образом повторить отправку файла.
+
+Выглядит это следующим образом: 
+
+``` 
+ $arrayQuery = array(
+    'chat_id' => TG_USER_ID,
+    'caption' => 'Проверка работы',
+    'document' => "BQACAgIAAxkDAAMUYuIyV6oVVT81C3UNccPy3mHGRkcAAhoZAAJgsBBLsPDr0DTbBw0pBA",
+);		
+$ch = curl_init('https://api.telegram.org/bot'. TG_TOKEN .'/sendDocument');
+curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $arrayQuery);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+$res = curl_exec($ch);
+curl_close($ch);
+```
+
+---
+
+## Групповая отправка изображений и файлов
+
+Для групповой отправки изображений в чат, нам необходимо воспользоваться методом `sendMediaGroup()` и немного переделать наш массив с параметрами запроса.
+
+Вот так будет выглядеть наш следующий пример.
+
+``` 
+$arrayQuery = [
+    'chat_id' => TG_USER_ID,
+
+    'media' => json_encode([
+        ['type' => 'photo', 'media' => 'attach://photo' ],
+        ['type' => 'photo', 'media' => 'attach://photo_2' ],
+    ]),
+
+    'photo' => new CURLFile(__DIR__ . '/1.jpg'),
+    'photo_2' => new CURLFile(__DIR__ . '/2.jpg'),
+];
+$ch = curl_init('https://api.telegram.org/bot'. TG_TOKEN .'/sendMediaGroup');
+curl_setopt($ch, CURLOPT_POST, 1); // данный параметр говорит, что мы отправлем POST запрос,
+curl_setopt($ch, CURLOPT_POSTFIELDS, $arrayQuery); // в данный параметр передаем массив с пост данными
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+$res = curl_exec($ch); //записываем ответ от telegram
+vardump($res);
+curl_close($ch);
+```
+
+Для передачи группы файлов, нам необходимо передать в качестве параметра media массив с параметрами изображений которые необходимо сгруппировать.
+
+Каждый массив вложенный в параметр media имеет следующие параметры:
+
+- `type` — тип файла который необходимо передать (в нашем случае это photo)
+- `media` — строка указывающая вложенный файл. Добавление подстроки `attach://` является обязательным правилом. 
+
