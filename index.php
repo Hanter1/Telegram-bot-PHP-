@@ -91,7 +91,7 @@ curl_close($ch);
 */
 
 // Групповая отправка изображений и файлов
-
+/*
 $arrayQuery = [
     'chat_id' => TG_USER_ID,
 
@@ -111,3 +111,4 @@ curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_HEADER, false);
 $res = curl_exec($ch); //записываем ответ от telegram
 curl_close($ch);
+*/
