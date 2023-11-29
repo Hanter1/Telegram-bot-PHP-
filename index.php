@@ -112,3 +112,43 @@ curl_setopt($ch, CURLOPT_HEADER, false);
 $res = curl_exec($ch); //записываем ответ от telegram
 curl_close($ch);
 */
+
+// работа с хуками
+/*
+$getQuery = [
+    "url" => "https://prog-time.ru/tg_script/index.php"
+];
+$ch = curl_init("https://api.telegram.org/bot". TG_TOKEN ."/setWebhook?" . http_build_query($getQuery));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+
+$resultQuery = curl_exec($ch);
+curl_close($ch);
+
+echo $resultQuery;
+*/
+/*
+$data = file_get_contents('php://input'); // в данную переменную с помощью функции file_get_contents отлавливаем любые php запросы к сайту
+$data = json_decode($data, true); // полученные данные в формате json декодируем 1 параметр это данные, 2-й используется для преобразование в асоциативный массив
+*/
+
+
+function writeLogFile($string, $clear = false){
+    $log_file_name = __DIR__."/message.txt";
+    if($clear == false) {
+        $now = date("Y-m-d H:i:s");
+        file_put_contents($log_file_name, $now." ".print_r($string, true)."\r\n", FILE_APPEND);
+    }
+    else {
+        file_put_contents($log_file_name, '');
+        $now = date("Y-m-d H:i:s");
+        file_put_contents($log_file_name, $now." ".print_r($string, true)."\r\n", FILE_APPEND);
+    }
+}
+
+$data = file_get_contents('php://input'); // в данную переменную с помощью функции file_get_contents отлавливаем любые php запросы к сайту
+$data = json_decode($data, true); // полученные данные в формате json декодируем 1 параметр это данные, 2-й используется для преобразование в асоциативный массив
+writeLogFile($data, true);
+
+echo file_get_contents(__DIR__."/message.txt");

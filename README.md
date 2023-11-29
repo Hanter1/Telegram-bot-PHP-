@@ -463,6 +463,255 @@ curl_close($ch);
 
 Для регистрации хука нам нужно отправить запрос с методом `setWebhook()`, которому в качестве параметра `url` мы должны передать ссылку на скрипт обработчик. В моём случае это просто php скрипт.
 
+На данный момент реализовано, что на 1 бота, можно повесить только 1 вебхук
+
+пример запроса:
+
+```
+$getQuery = [
+    "url" => "https://prog-time.ru/tg_script/index.php"  //наш скрипт с которым мы работаем 
+];
+$ch = curl_init("https://api.telegram.org/bot". TG_TOKEN ."/setWebhook?" . http_build_query($getQuery));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+
+$resultQuery = curl_exec($ch);
+curl_close($ch);
+
+echo $resultQuery;
+```
+
+Если запрос прошёл успешно, то получим следующий ответ:
+
+``` 
+{
+  "ok": true,
+  "result": true,
+  "description": "Webhook was set"
+}
+```
+
+Данный запрос отправляется 1 раз!
+
+## Разбор параметров передаваемых через Hooks
+
+Здесь есть небольшая проблема! Скрипты будут выполняться в рандомный момент и если мы не запишем данные, то они пропадут в пустоту. Для записи ответа вы можете использовать `Базу Данных` или просто записать массив в файл `txt`.
+
+Для записи строки я буду использовать дополнительную, самописную функцию `writeLogFile()`
+
+Функция принимает 2 параметра:
+
+- первый параметр, строка для записи. В нашем случае это JSON строка.
+- второй параметр используется для очистки файла и перезаписи. Если данный параметр имеет значение false, то в файл дописывается информация.
+
+```
+function writeLogFile($string, $clear = false){
+    $log_file_name = __DIR__."/message.txt";
+    if($clear == false) {
+	  $now = date("Y-m-d H:i:s");
+	  file_put_contents($log_file_name, $now." ".print_r($string, true)."\r\n", FILE_APPEND);
+    }else {
+	  file_put_contents($log_file_name, '');
+      file_put_contents($log_file_name, $now." ".print_r($string, true)."\r\n", FILE_APPEND);
+    }
+}
+```
+
+Полный код для записи информации в файл будет выглядеть следующим образом.
+
+``` 
+function writeLogFile($string, $clear = false){
+    $log_file_name = __DIR__."/message.txt";
+    if($clear == false) {
+	  $now = date("Y-m-d H:i:s");
+	  file_put_contents($log_file_name, $now." ".print_r($string, true)."\r\n", FILE_APPEND);
+    }else {
+	  file_put_contents($log_file_name, '');
+      file_put_contents($log_file_name, $now." ".print_r($string, true)."\r\n", FILE_APPEND);
+    }
+}
+
+$data = file_get_contents('php://input');
+writeLogFile($data, true);
+```
+
+После отправки сообщения боту, данные были отправлены на наш скрипт и мы записали их в лог файл.
+
+Теперь выведем полученную информацию на страницу
+
+`echo file_get_contents(__DIR__."/message.txt");`
+
+___
+
+## Данные при нажатие на кнопку в чате
+
+Если пользователь нажал на кнопку, то на скрипт также будет отправлен запрос с данными о пользователе и о кнопке.
+
+Отличительной особенностью таких запросов является то что главный ключ `message` заменяется на `callback_query`, а сам массив `message` будет находиться внутри.
+
+Получить код кнопки на которую было произведено нажатие, можно из `callback_query -> data`.
+
+``` 
+{
+  "update_id": 803290921,
+  "callback_query": {
+    "id": "6118810175780540321",
+    "from": {
+      "id": 1424646511,
+      "is_bot": false,
+      "first_name": "Имя",
+      "last_name": "Фамилия",
+      "username": "namesurname",
+      "language_code": "ru"
+    },
+    "message": {
+      "message_id": 113,
+      "from": {
+        "id": 5340791844,
+        "is_bot": true,
+        "first_name": "test_name,
+        "username": "test_bot"
+      },
+      "chat": {
+        "id": 1424646511,
+        "first_name": "Имя",
+      "last_name": "Фамилия",
+        "username": "namesurname",
+        "type": "private"
+      },
+      "date": 1659335238,
+      "text": "Тестовое сообщение",
+      "reply_markup": {
+        "inline_keyboard": [
+          [
+            {
+              "text": "YOUR BUTTON LABEL TEXT",
+              "callback_data": "test_123"
+            }
+          ]
+        ]
+      }
+    },
+    "chat_instance": "4661722712167232747",
+    "data": "test_123"
+  }
+}
+```
+
+## Данные при отправке изображения
+
+Данные которые приходят при отправке изображения в чат, от пользователя.
+
+``` 
+{
+  "update_id": 803290893,
+  "message": {
+    "message_id": 42,
+    "from": {
+      "id": 1424646511,
+      "is_bot": false,
+     "first_name": "Имя",
+      "last_name": "Фамилия",
+      "username": "namesurname"
+      "language_code": "ru"
+    },
+    "chat": {
+      "id": 1424646511,
+      "first_name": "Имя",
+      "last_name": "Фамилия",
+      "username": "namesurname",
+      "type": "private"
+    },
+    "date": 1659099213,
+    "photo": [
+      {
+        "file_id": "AgACAgIAAxkBAAMqYuPYTHnTFqNQZ3DB5B-f_MovPOMAArm9MRud5CFLxgi3BP6dpsoBAAMCAANzAAMpBA",
+        "file_unique_id": "AQADub0xG53kIUt4",
+        "file_size": 1863,
+        "width": 90,
+        "height": 90
+      },
+      {
+        "file_id": "AgACAgIAAxkBAAMqYuPYTHnTFqNQZ3DB5B-f_MovPOMAArm9MRud5CFLxgi3BP6dpsoBAAMCAANtAAMpBA",
+        "file_unique_id": "AQADub0xG53kIUty",
+        "file_size": 30064,
+        "width": 320,
+        "height": 320
+      },
+      {
+        "file_id": "AgACAgIAAxkBAAMqYuPYTHnTFqNQZ3DB5B-f_MovPOMAArm9MRud5CFLxgi3BP6dpsoBAAMCAAN5AAMpBA",
+        "file_unique_id": "AQADub0xG53kIUt-",
+        "file_size": 133230,
+        "width": 880,
+        "height": 880
+      },
+      {
+        "file_id": "AgACAgIAAxkBAAMqYuPYTHnTFqNQZ3DB5B-f_MovPOMAArm9MRud5CFLxgi3BP6dpsoBAAMCAAN4AAMpBA",
+        "file_unique_id": "AQADub0xG53kIUt9",
+        "file_size": 138716,
+        "width": 800,
+        "height": 800
+      }
+    ]
+  }
+}
+```
+
+После получения данного массива мы можем сохранить отправленное изображение на своём сервере. Для этого нам нужно с помощью метода `getFile` получить полный путь к изображению, передав ему в качестве параметра `file_id`.
+
+Полный код для сохранения будет выглядеть так:
+
+```
+/* токен */
+$token = "1111111111:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+
+/* массив с параметрами запроса */
+$getQuery = array(
+    "file_id" => "AgACAgIAAxkBAAMqYuPYTHnTFqNQZ3DB5B-f_MovPOMAArm9MRud5CFLxgi3BP6dpsoBAAMCAAN5AAMpBA",
+);
+$ch = curl_init("https://api.telegram.org/bot". $token ."/getFile?" . http_build_query($getQuery));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_HEADER, false);
+
+$resultQuery = curl_exec($ch);
+curl_close($ch);
+
+/* записываем ответ в формате PHP массива */
+$arrDataResult = json_decode($resultQuery, true);
+
+/* записываем URL необходимого изображения */
+$fileUrl = $arrDataResult["result"]["file_path"];
+
+/* формируем полный URL до файла */
+$photoPathTG = "https://api.telegram.org/file/bot". $token ."/" . $fileUrl;
+
+/* забираем название файла */
+$arrFilePath = explode("/", $fileUrl);
+$newFilerPath = __DIR__ . "/img/" . $arrFilePath[1];
+
+/* сохраняем файл на сервер */
+file_put_contents($newFilerPath , file_get_contents($photoPathTG));
+```
+
+---
+
+
+
+
+## Скрипт для ответа на запросы через Хук
+
+Токен бота запишем в константу `TG_TOKEN`
+
+
+
+
+
+
+
+
+
 
 
 
